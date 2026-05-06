@@ -119,7 +119,8 @@ class BLEConnection
     bool removeBondKey(void);
 
     bool saveCccd(void);
-    bool loadCccd(void);    
+    bool loadCccd(void);
+
     /*------------------------------------------------------------------*/
     /* INTERNAL USAGE ONLY
      * Although declare as public, it is meant to be invoked by internal code.

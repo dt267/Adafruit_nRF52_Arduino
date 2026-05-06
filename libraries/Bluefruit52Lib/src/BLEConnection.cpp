@@ -289,19 +289,24 @@ bool BLEConnection::requestPairing(void)
 
 void BLEConnection::setIndicateConfirmTimeout(uint32_t timeout_ms)
 {
-  _indicate_confirm_timeout = pdMS_TO_TICKS(timeout_ms);
+  _indicate_confirm_timeout = (timeout_ms == portMAX_DELAY) ? portMAX_DELAY : pdMS_TO_TICKS(timeout_ms);
 }
 
 bool BLEConnection::waitForIndicateConfirm(void)
 {
-  // on the fly semaphore
-  _hvc_sem = xSemaphoreCreateBinary();
+  // Lazy-allocate once per connection and reuse. Avoids a create/delete race
+  // with the BLE event handler that may give the semaphore on HVC/timeout.
+  if (_hvc_sem == NULL)
+  {
+    _hvc_sem = xSemaphoreCreateBinary();
+    if (_hvc_sem == NULL) return false;
+  }
+
+  // Drain any stale signal left from a previous call (e.g. late HVC after timeout)
+  xSemaphoreTake(_hvc_sem, 0);
 
   _hvc_received = false;
   xSemaphoreTake(_hvc_sem, _indicate_confirm_timeout);
-
-  vSemaphoreDelete(_hvc_sem);
-  _hvc_sem = NULL;
 
   return _hvc_received;
 }
