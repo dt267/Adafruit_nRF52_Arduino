@@ -28,7 +28,7 @@ There are two methods that you can use to install this BSP. We highly recommend 
  1. [Download and install the Arduino IDE](https://www.arduino.cc/en/Main/Software) (At least v1.6.12)
  2. Start the Arduino IDE
  3. Go into Preferences
- 4. Add https://www.adafruit.com/package_adafruit_index.json as an 'Additional Board Manager URL'
+ 4. Add https://adafruit.github.io/arduino-board-index/package_adafruit_index.json as an 'Additional Board Manager URL'
  5. Restart the Arduino IDE
  6. Open the Boards Manager from the Tools -> Board menu and install 'Adafruit nRF52 by Adafruit'
  7. Once the BSP is installed, select 'Adafruit Feather nRF52840 Express' from the Tools -> Board menu, which will update your system config to use the right compiler and settings for the nRF52.
@@ -69,7 +69,7 @@ $ pip3 install adafruit-nrfutil --user
 
 ### Drivers
 
-- [SiLabs CP2104 driver](http://www.silabs.com/products/mcu/pages/usbtouartbridgevcpdrivers.aspx) is required for USB to Serial when using with Feather nRF52832
+- [SiLabs CP2104 driver](https://www.silabs.com/developers/usb-to-uart-bridge-vcp-drivers?tab=downloads) is required for USB to Serial when using with Feather nRF52832
 
 ## Bootloader
 
