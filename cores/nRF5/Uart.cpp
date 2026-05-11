@@ -87,9 +87,38 @@ void Uart::begin(unsigned long baudrate, uint16_t config)
   } else {
     nrfUart->CONFIG = config | (UARTE_CONFIG_HWFC_Disabled << UARTE_CONFIG_HWFC_Pos);
   }
- 
-  const double regValue = 268.43f*(double)baudrate; /* 2^32 / 16000000 = 268.43f. more details here: https://devzone.nordicsemi.com/f/nordic-q-a/391/uart-baudrate-register-values */
-  const uint32_t nrfBaudRate = ((uint32_t)regValue + 0x800) & 0xFFFFF000;
+
+  uint32_t nrfBaudRate;
+
+  // Use Nordic's pre-computed values for standard baudrates to match other
+  // nRF devices exactly; fall back to runtime computation for custom values.
+  switch (baudrate) {
+    case 1200:    nrfBaudRate = UARTE_BAUDRATE_BAUDRATE_Baud1200;   break;
+    case 2400:    nrfBaudRate = UARTE_BAUDRATE_BAUDRATE_Baud2400;   break;
+    case 4800:    nrfBaudRate = UARTE_BAUDRATE_BAUDRATE_Baud4800;   break;
+    case 9600:    nrfBaudRate = UARTE_BAUDRATE_BAUDRATE_Baud9600;   break;
+    case 14400:   nrfBaudRate = UARTE_BAUDRATE_BAUDRATE_Baud14400;  break;
+    case 19200:   nrfBaudRate = UARTE_BAUDRATE_BAUDRATE_Baud19200;  break;
+    case 28800:   nrfBaudRate = UARTE_BAUDRATE_BAUDRATE_Baud28800;  break;
+    case 31250:   nrfBaudRate = UARTE_BAUDRATE_BAUDRATE_Baud31250;  break;
+    case 38400:   nrfBaudRate = UARTE_BAUDRATE_BAUDRATE_Baud38400;  break;
+    case 56000:   nrfBaudRate = UARTE_BAUDRATE_BAUDRATE_Baud56000;  break;
+    case 57600:   nrfBaudRate = UARTE_BAUDRATE_BAUDRATE_Baud57600;  break;
+    case 76800:   nrfBaudRate = UARTE_BAUDRATE_BAUDRATE_Baud76800;  break;
+    case 115200:  nrfBaudRate = UARTE_BAUDRATE_BAUDRATE_Baud115200; break;
+    case 230400:  nrfBaudRate = UARTE_BAUDRATE_BAUDRATE_Baud230400; break;
+    case 250000:  nrfBaudRate = UARTE_BAUDRATE_BAUDRATE_Baud250000; break;
+    case 460800:  nrfBaudRate = UARTE_BAUDRATE_BAUDRATE_Baud460800; break;
+    case 921600:  nrfBaudRate = UARTE_BAUDRATE_BAUDRATE_Baud921600; break;
+    case 1000000: nrfBaudRate = UARTE_BAUDRATE_BAUDRATE_Baud1M;     break;
+    default: {
+      // BAUDRATE = round(baudrate * 2^32 / 16e6) and round to nearest 0x1000.
+      // https://devzone.nordicsemi.com/f/nordic-q-a/391/uart-baudrate-register-values
+      const uint32_t regValue = (uint32_t)(((uint64_t)baudrate * 268435456ULL + 500000ULL) / 1000000ULL);
+      nrfBaudRate = (regValue + 0x800) & 0xFFFFF000;
+      break;
+    }
+  }
 
   nrfUart->BAUDRATE = nrfBaudRate;
 
