@@ -72,22 +72,14 @@ class Advertisable
 class BLEAdvertisingData
 {
 protected:
-  uint8_t* _data;
-  uint8_t  _max_len;
-  uint8_t  _count;
+  uint8_t _max_len = BLE_GAP_ADV_SET_DATA_SIZE_MAX;
+  uint8_t _data[BLE_GAP_ADV_SET_DATA_SIZE_EXTENDED_CONNECTABLE_MAX_SUPPORTED];
+  uint8_t _count;
 
 public:
   BLEAdvertisingData(void);
-  ~BLEAdvertisingData(void);
 
-  // Class owns a heap buffer; disable copy to prevent shallow-copy / double-free.
-  BLEAdvertisingData(const BLEAdvertisingData&)            = delete;
-  BLEAdvertisingData& operator=(const BLEAdvertisingData&) = delete;
-
-  // Resize the internal buffer (heap-allocated). Defaults to BLE_GAP_ADV_SET_DATA_SIZE_MAX (31).
-  // For extended advertising use BLE_GAP_ADV_SET_DATA_SIZE_EXTENDED_CONNECTABLE_MAX_SUPPORTED (238)
-  // or BLE_GAP_ADV_SET_DATA_SIZE_EXTENDED_MAX_SUPPORTED (255).
-  // Reallocates the buffer; any previously added data is discarded.
+  // @param max_len must be set before adding data, defaults to BLE_GAP_ADV_SET_DATA_SIZE_MAX
   void setMaxLen(uint8_t max_len);
 
   /*------------- Adv Data -------------*/
@@ -132,8 +124,7 @@ public:
 
   BLEAdvertising(void);
 
-  // Sets the advertising type and resizes the internal buffer accordingly
-  // (extended types -> larger buffer, legacy types -> 31-byte buffer).
+  // must be set as first property after clear for extended advertising
   void setType(uint8_t adv_type);
   void setFastTimeout(uint16_t sec);
 

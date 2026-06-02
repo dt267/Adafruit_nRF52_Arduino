@@ -40,46 +40,13 @@
 /* BLEAdvertisingData shared between ADV and ScanResponse
  *------------------------------------------------------------------*/
 BLEAdvertisingData::BLEAdvertisingData(void)
-  : _data(NULL), _max_len(0), _count(0)
 {
-  setMaxLen(BLE_GAP_ADV_SET_DATA_SIZE_MAX);
-}
-
-BLEAdvertisingData::~BLEAdvertisingData(void)
-{
-  if (_data) rtos_free(_data);
+  clearData();
 }
 
 void BLEAdvertisingData::setMaxLen(uint8_t max_len)
 {
-  if (_data && max_len == _max_len) return;
-
-  uint8_t* old_data  = _data;
-  uint8_t  old_count = _count;
-
-  if (old_count)
-  {
-    // stop advertising before re-allocate adv buffer
-    if (Bluefruit.Advertising.isRunning()) Bluefruit.Advertising.stop();
-  }
-
-  _data = (uint8_t*) rtos_malloc(max_len);
-  if (_data)
-  {
-    // Preserve previously added bytes across resize; truncate if shrinking.
-    uint8_t keep = (old_count <= max_len) ? old_count : max_len;
-    if (old_data && keep) memcpy(_data, old_data, keep);
-    if (keep < max_len)   memset(_data + keep, 0, max_len - keep);
-    _max_len = max_len;
-    _count   = keep;
-  }
-  else
-  {
-    _max_len = 0;
-    _count   = 0;
-  }
-
-  if (old_data) rtos_free(old_data);
+  _max_len = max_len;
 }
 
 bool BLEAdvertisingData::addData(uint8_t type, const void* data, uint8_t len)
@@ -214,34 +181,19 @@ bool BLEAdvertisingData::addService(BLEClientService& service)
  */
 bool BLEAdvertisingData::addName(void)
 {
-  // Need room for at least [len][type][1 char]
-  VERIFY(_count + 2 < _max_len);
-  uint8_t* adv_slot = &_data[_count];
-  const uint8_t remaining = _max_len - _count - 2;
+  char name[BLE_GAP_ADV_SET_DATA_SIZE_MAX+1];
 
-  // Try writing the name directly into _data. If it fits, sd returns NRF_SUCCESS
-  // with name_len = bytes copied. If it doesn't fit, sd returns NRF_ERROR_DATA_SIZE
-  // without copying and sets name_len to the full device name length.
-  uint16_t name_len = remaining;
-  uint32_t err = sd_ble_gap_device_name_get(adv_slot + 2, &name_len);
+  uint8_t type = BLE_GAP_AD_TYPE_COMPLETE_LOCAL_NAME;
+  uint8_t len  = Bluefruit.getName(name, sizeof(name));
 
-  uint8_t type;
-  uint8_t len;
-  if (err == NRF_SUCCESS) {
-    type = BLE_GAP_AD_TYPE_COMPLETE_LOCAL_NAME;
-    len  = (uint8_t) name_len;
-  } else {
-    // Truncate: fetch full name into a temp buffer, then copy what fits.
-    uint8_t buftmp[name_len];
-    VERIFY_STATUS(sd_ble_gap_device_name_get(buftmp, &name_len), false);
-    memcpy(adv_slot + 2, buftmp, remaining);
+  // not enough for full name, chop it
+  if (_count + len + 2 > _max_len)
+  {
     type = BLE_GAP_AD_TYPE_SHORT_LOCAL_NAME;
-    len  = remaining;
+    len  = BLE_GAP_ADV_SET_DATA_SIZE_MAX - (_count+2);
   }
 
-  adv_slot[0] = len + 1;
-  adv_slot[1] = type;
-  _count += 2 + len;
+  VERIFY( addData(type, name, len) );
 
   return type == BLE_GAP_AD_TYPE_COMPLETE_LOCAL_NAME;
 }
@@ -294,7 +246,8 @@ bool BLEAdvertisingData::setData(uint8_t const * data, uint8_t count)
 void BLEAdvertisingData::clearData(void)
 {
   _count = 0;
-  if (_data) memset(_data, 0, _max_len);
+  arrclr(_data);
+  _max_len = BLE_GAP_ADV_SET_DATA_SIZE_MAX;
 }
 
 /*------------------------------------------------------------------*/
@@ -329,9 +282,7 @@ void BLEAdvertising::setType(uint8_t adv_type)
   _type = adv_type;
   if (isExtended())
   {
-    // Connectable extended PDUs are capped at 238 bytes; other extended PDUs at 255.
-    setMaxLen(isConnectable() ? BLE_GAP_ADV_SET_DATA_SIZE_EXTENDED_CONNECTABLE_MAX_SUPPORTED
-                              : BLE_GAP_ADV_SET_DATA_SIZE_EXTENDED_MAX_SUPPORTED);
+    setMaxLen(BLE_GAP_ADV_SET_DATA_SIZE_EXTENDED_MAX_SUPPORTED);
   }
   else
   {
