@@ -148,16 +148,28 @@ SECTIONS
         __bss_end__ = .;
     } > RAM
 
+    /* .noinit at a fixed high address just below the stack — the UF2 bootloader
+     * only zeroes its own low-RAM BSS and cannot reach this area.
+     * Increase __noinit_size if more variables are added; ASSERT below will catch overflow. */
+    __noinit_size = 32;
+
     .heap :
     {
         __HeapBase = .;
         __end__ = .;
         PROVIDE(end = .);
         KEEP(*(.heap*))
-        . = ALIGN(__StackLimit);
+        . = ALIGN(__StackLimit - __noinit_size);
         __HeapLimit = .;
     } > RAM
-    
+
+    .noinit (__StackLimit - __noinit_size) (NOLOAD) :
+    {
+        . = ALIGN(4);
+        *(.noinit)
+        . = ALIGN(4);
+    } > RAM
+
     /* .stack_dummy section doesn't contains any symbols. It is only
      * used for linker to calculate size of stack sections, and assign
      * values to stack symbols later */
@@ -170,6 +182,7 @@ SECTIONS
     
     /* Check if data + heap + stack exceeds RAM limit */
     ASSERT(__StackLimit >= __HeapLimit, "region RAM overflowed with stack")
-    ASSERT(__StackLimit >= __bss_end__, "region RAM overflowed with stack")
+    ASSERT((__StackLimit - __noinit_size) >= __bss_end__, "region RAM overflowed with stack")
+    ASSERT(SIZEOF(.noinit) <= __noinit_size, ".noinit section exceeds reserved area — increase __noinit_size")
 }
 
